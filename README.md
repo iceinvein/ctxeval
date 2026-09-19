@@ -23,16 +23,19 @@ files implement it, score recall against an answer key.
 Then one command finds the answer:
 
 ```
-$ rg -l dedupeProviderSkillsByName
-packages/client-runtime/src/providerSkills.ts
-apps/web/src/providerSkillSearch.ts
-apps/mobile/src/features/threads/use-composer-command-menu.ts
+$ rg -l dedupeItemsByName
+packages/core/src/dedupe.ts
+apps/web/src/search-ranking.ts
+apps/mobile/src/features/command-menu.ts
 ```
 
 That is the expected set, exactly. Both arms score full marks, the comparison
 measures nothing, and the number you publish is noise. Four of five tasks in one
 of my own sets failed this way, including the one I had hand-picked as the most
 vocabulary-disjoint.
+
+The demo set in this repository reproduces the same failure against a public
+codebase, so you can watch it happen rather than take my word for it.
 
 ## The eight rules
 

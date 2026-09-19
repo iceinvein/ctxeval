@@ -1,0 +1,42 @@
+[
+  {
+    "id": "daemon-unreachable-reason",
+    "source_commit": "21520671",
+    "difficulty": "unknown",
+    "note": "Plain language against code that says daemon/probe/install.",
+    "prompt": "When the command-line tool cannot reach the background service it depends on, it tells the user which specific reason it failed for, rather than falling back on generic advice to reinstall. Identify the source file that produces that explanation and the one that decides when it is shown.",
+    "expected": ["src/install.rs", "src/main.rs"]
+  },
+  {
+    "id": "refuse-sweep-on-lost-state",
+    "source_commit": "2646a594",
+    "difficulty": "unknown",
+    "note": "Code says registry/orphan/sweep; prompt says bookkeeping file/cleanup/refuses.",
+    "prompt": "A periodic cleanup removes records for repositories that are no longer present. If the file holding that bookkeeping is missing or has been emptied, the cleanup refuses to run at all rather than concluding that everything is absent and deleting it. Identify the source file holding the bookkeeping and the one that runs the cleanup.",
+    "expected": ["src/registry.rs", "src/session.rs"]
+  },
+  {
+    "id": "grace-period-setting",
+    "source_commit": "a3d0cb61",
+    "difficulty": "unknown",
+    "note": "Deliberately weak: the setting has a literal name, so one grep should find both files. Included to show R3 rejecting it.",
+    "prompt": "A configurable grace period controls how many days a repository can be missing from disk before its record is removed. Identify the source file that defines the setting and the one that exposes it over the settings API.",
+    "expected": ["src/config.rs", "src/server/api/settings.rs"]
+  },
+  {
+    "id": "worktree-to-base-repo",
+    "source_commit": "f5c42fee",
+    "difficulty": "unknown",
+    "note": "Code says worktree/resolve/base; prompt says linked checkout/original clone.",
+    "prompt": "A linked checkout created from an existing clone is traced back to the original clone it derives from, so work done in the checkout can reuse what the original already knows. Identify the source file that performs that tracing and the one that calls it when a directory is first bound.",
+    "expected": ["src/session.rs", "src/session/worktree.rs"]
+  },
+  {
+    "id": "orphaned-rows-after-replacement",
+    "source_commit": "f3d3577e",
+    "difficulty": "unknown",
+    "note": "Three files spanning the write path and two query modules.",
+    "prompt": "When a symbol is replaced during indexing, rows that referred to the previous version are left behind with nothing pointing at them, and are removed rather than allowed to accumulate. Identify the source file in the write path that triggers the removal and the two query modules that carry the statements it uses.",
+    "expected": ["src/indexer/pipeline/write.rs", "src/storage/sqlite/queries/metrics.rs", "src/storage/sqlite/queries/misc.rs"]
+  }
+]

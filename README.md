@@ -142,30 +142,56 @@ Run at least three repeats per cell. At one run per cell my headline effect and
 my run-to-run noise were both 0.33, one file out of three: a finding at n=1 and
 a coin flip at n=3.
 
-## The two arms
+## The three arms
 
 `run.sh` compares an agent with and without a code-intelligence index by
-manipulating `PATH`. The index arm runs normally; the baseline arm runs with a
-`PATH` where the `code-intel` binary is absent, built from a symlink farm so
-every other tool survives.
+manipulating `PATH`.
 
-That does two things at once: the agent genuinely has no index to call, and any
-hook that would redirect text search to the index stands down, because the
-binary it checks for is missing. Isolating `CLAUDE_CONFIG_DIR` would be tidier
-but also drops the credentials, and every run comes back "Not logged in".
+| Arm | Index reachable | Enforcement hook | The agent |
+|-----|-----------------|------------------|-----------|
+| `grep` | no | inert | has only text search |
+| `codeintel` | yes, as `code-intel` | active | is pushed to the index |
+| `free` | yes, as `ci-search` | inert | picks for itself |
+
+The `grep` arm runs with a `PATH` where the `code-intel` binary is absent,
+built from a symlink farm so every other tool survives. That does two things at
+once: the agent genuinely has no index to call, and any hook that would
+redirect text search to the index stands down, because the binary it checks for
+is missing. Isolating `CLAUDE_CONFIG_DIR` would be tidier but also drops the
+credentials, and every run comes back "Not logged in".
+
+The `free` arm is the one worth understanding. An enforcement hook typically
+checks whether a binary named `code-intel` is on `PATH`. Expose the identical
+CLI under a different name and keep the original off the path, and the hook has
+nothing to enforce while the agent keeps full code intelligence. That separates
+**available** from **mandated**, which is the difference between measuring a
+tool and measuring your own configuration.
+
+```bash
+REPO=/path/to/repo TASKS=tasks.json RUNS=./runs ARMS="grep codeintel free"   bash run.sh
+```
+
+Two implementation notes, both learned the hard way. The wrapper must `exec`
+the real binary rather than symlink to it: this CLI dispatches on `argv[0]`, and
+under another name it starts as a *server* and loads an embedding model on every
+call. And `--settings '{"hooks":{"PreToolUse":[]}}'` does not disable a global
+hook, because settings merge rather than replace. `--bare` does skip hooks but
+requires `ANTHROPIC_API_KEY`, so it is no use on subscription auth.
 
 Set `CODE_INTEL_BIN_DIR` if your binary is not in `/opt/homebrew/bin`.
 
-**This is not a neutral A/B.** If you run a hook that pushes the agent toward
-the index, the index arm is pushed rather than choosing. That measures your
-configuration, which is a legitimate thing to measure, but say so.
+**Run the `free` arm before you trust any cost comparison.** In my own
+measurement the agent called the index zero times out of fifteen when it was
+merely offered, which meant every cost and turn difference I had attributed to
+the tool was the hook's doing. An index nobody calls is worth nothing however
+good its answers are, and you cannot see that from the other two arms.
 
 ## Files
 
 | | |
 |---|---|
 | `admit.py` | The eight rules. R1-R4 are free; `pilot_verdict()` applies R5-R7 to pilot runs |
-| `run.sh` | Runs one task, one arm, one model, one repeat. Writes raw CLI JSON |
+| `run.sh` | Runs one task, one arm (`grep`, `codeintel`, `free`), one model, one repeat |
 | `score.py` | Recall, precision, turns, token split with cache reads separated, per-model deltas |
 | `modgraph.py` | Import graph for a pnpm TypeScript monorepo, for finding two-hop task candidates |
 | `demo-tasks.json` | Five hand-written tasks against a public repository, four of which fail |

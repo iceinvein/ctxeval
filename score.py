@@ -17,7 +17,7 @@ EVAL = pathlib.Path(__file__).parent
 TASKS_FILE = pathlib.Path(os.environ.get("TASKS", EVAL / "tasks.json"))
 RUNS_DIR = pathlib.Path(os.environ.get("RUNS", EVAL / "runs"))
 TASKS = {t["id"]: t for t in json.loads(TASKS_FILE.read_text())}
-RUN_RE = re.compile(r"^(?P<task>.+?)__(?P<arm>grep|codeintel)__(?P<model>[a-z]+)(?:__r(?P<rep>\d+))?\.json$")
+RUN_RE = re.compile(r"^(?P<task>.+?)__(?P<arm>grep|codeintel|free)__(?P<model>[a-z]+)(?:__r(?P<rep>\d+))?\.json$")
 
 
 def norm(p: str) -> str:
@@ -105,7 +105,7 @@ for r in rows:
 
 deltas = {}
 for model in MODEL_ORDER:
-    for arm in ("grep", "codeintel"):
+    for arm in ("grep", "codeintel", "free"):
         rs = by.get((model, arm))
         if not rs:
             continue

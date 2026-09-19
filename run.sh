@@ -20,7 +20,7 @@ BUDGET="${BUDGET:-0.60}"
 EFFORT="${EFFORT:-medium}"
 TASKS="${TASKS:-$EVAL_DIR/tasks.json}"
 MODELS="${MODELS:-haiku sonnet opus}"
-ARMS="${ARMS:-grep codeintel}"
+ARMS="${ARMS:-grep codeintel free}"
 REP="${REP:-1}"
 
 mkdir -p "$RUNS"
@@ -32,6 +32,14 @@ if [ ! -d "$SHIM" ]; then
     [ "$(basename "$f")" = "code-intel" ] || ln -sf "$f" "$SHIM/$(basename "$f")"
   done
 fi
+# ci-search is the same CLI under a name the hook does not look for.
+CISHIM="$EVAL_DIR/cishim"
+if [ ! -x "$CISHIM/ci-search" ]; then
+  mkdir -p "$CISHIM"
+  printf '#!/bin/sh\nexec %s "$@"\n' "$(command -v code-intel)" > "$CISHIM/ci-search"
+  chmod +x "$CISHIM/ci-search"
+fi
+
 NOCI_PATH=$(echo "$PATH" | tr ':' '\n' | sed "s#^${CODE_INTEL_BIN_DIR:-/opt/homebrew/bin}\$#$SHIM#" | paste -sd: -)
 
 SCHEMA='{"type":"object","properties":{"files":{"type":"array","items":{"type":"string"}}},"required":["files"],"additionalProperties":false}'
@@ -70,6 +78,22 @@ No code-intelligence index is available on this machine. Use text search and
 file reading.
 EOF
 
+read -r -d '' FREE_SYS <<'EOF' || true
+
+Two ways of searching this repository are available and you may use either,
+both, or neither as you see fit.
+
+  Text search:  ripgrep, and the Grep and Glob tools.
+  Code index:   the ci-search CLI, which carries definitions, references
+                and call structure. Pass --json for machine-readable output.
+
+    ci-search search --repo . --context snippets --json "query"
+    ci-search definition|references|call-hierarchy --repo . --json SYMBOL
+    ci-search repo-map --repo . --json
+
+Neither is preferred. Choose whichever you judge will answer the question.
+EOF
+
 read -r -d '' CI_SYS <<'EOF' || true
 
 A local code-intelligence index of this repository is available via the
@@ -101,11 +125,11 @@ jq -c '.[]' "$TASKS" | while read -r task; do
       out="$RUNS/${id}__${arm}__${model}__r${REP}.json"
       [ -s "$out" ] && { echo "skip  $id $arm $model"; continue; }
 
-      if [ "$arm" = "codeintel" ]; then
-        sys="$BASE_SYS$CI_SYS"; runpath="$PATH"
-      else
-        sys="$BASE_SYS$GREP_SYS"; runpath="$NOCI_PATH"
-      fi
+      case "$arm" in
+        codeintel) sys="$BASE_SYS$CI_SYS";   runpath="$PATH" ;;
+        free)      sys="$BASE_SYS$FREE_SYS"; runpath="$NOCI_PATH:$CISHIM" ;;
+        *)         sys="$BASE_SYS$GREP_SYS"; runpath="$NOCI_PATH" ;;
+      esac
 
       printf 'run   %-24s %-10s %-7s r%s ' "$id" "$arm" "$model" "$REP"
       start=$(date +%s)
